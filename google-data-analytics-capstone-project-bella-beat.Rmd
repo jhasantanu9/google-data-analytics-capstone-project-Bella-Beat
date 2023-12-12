@@ -1,0 +1,239 @@
+---
+title: 'Google Data Analytics Capstone Project: Bella Beat'
+author: "Santanu"
+date: "12/12/2023"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+## Introduction
+
+This is my Google Data Analytics Capstone Project for Case Study 2 - BellaBeat. 
+
+## Scenario
+
+You are a junior data analyst working on the marketing analyst team at Bellabeat, a high-tech manufacturer of health-focused
+products for women. Bellabeat is a successful small company, but they have the potential to become a larger player in the
+global [smart device](https://en.wikipedia.org/wiki/Smart_device) market. Urška Sršen, cofounder and Chief Creative Officer of Bellabeat, believes that analyzing smart
+device fitness data could help unlock new growth opportunities for the company. You have been asked to focus on one of
+Bellabeat’s products and analyze smart device data to gain insight into how consumers are using their smart devices. The
+insights you discover will then help guide marketing strategy for the company. You will present your analysis to the Bellabeat
+executive team along with your high-level recommendations for Bellabeat’s marketing strategy.
+
+## Stakeholders
+
+Urška Sršen: Co-founder and Chief Creative Officer.
+Sando Mur: Mathematician and Co-founder.
+Bellabeat Marketing Analytics Team: Data analysts responsible for guiding marketing strategy.
+
+* **Products**
+
+Bellabeat App: Tracks activity, sleep, stress, menstrual cycle, and mindfulness.
+Leaf: Classic wellness tracker for activity, sleep, and stress.
+Time: Wellness watch tracking activity, sleep, and stress.
+Spring: Smart water bottle tracking daily hydration.
+Bellabeat Membership: Subscription-based program offering personalized guidance.
+
+## About The Company
+
+Founded in 2013 by Urška Sršen and Sando Mur, Bellabeat combines artistry and technology to empower women with health insights. The company has expanded globally, offering a range of products available online and through various retailers. Digital marketing is a key focus, with investments in platforms like Google, Facebook, Instagram, Twitter, and YouTube.
+
+## 1. Ask
+
+### Business Objective
+
+Analyze non-Bellabeat smart device usage data, specifically FitBit trackers, to influence the target market for Bellabeat's Time watch.
+
+## 2. Prepare
+
+### Location of Data
+
+The data used in this project is from Kaggle: [FitBit Fitness Tracker Data](https://www.kaggle.com/datasets/arashnic/fitbit).
+
+### Data Credibility, licensing and integrity
+
+This Kaggle data set contains personal fitness tracker from thirty fitbit users. The data was collected by a survey sent via Amazon Mechanical Turk between 03.12.2016-05.12.2016. CC0: Public Domain, made available by [Möbius](https://www.kaggle.com/arashnic). It was last updated over a year ago. 
+
+### Data Organization
+* I am focusing on the daily time frame of the data as the goal on my analysis is reliant on the trends in the day to day smart device usage. 
+* I will be using all the daily activity, sleep, and weight data to show trends and pattern that will hopefully help us in seeing some opportunity in improving Bellabeat marketing strategy.  
+* For this project, It could be easily be done in Excel or Google Sheets. However, I chose to use RStudio Desktop to help get comfortable and learn more about this language. 
+
+```{r}
+# Set CRAN mirror
+options(repos = "http://cran.us.r-project.org")
+
+# Install and load the package 
+install.packages(c("tidyverse", "dplyr", "ggplot2", "tidyr", "skimr", "lubridate", "janitor"))
+install.packages("readr")
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(skimr)
+library(lubridate)
+library(janitor)
+
+library(readr)
+```
+
+```{r}
+#Importing data
+
+# Install and load the readr package
+install.packages("readr")
+library(readr)
+
+
+activity <- read_csv("C:/Users/bhumi/Desktop/Fitabase Data 4.12.16-5.12.16/dailyActivity_merged.csv")
+calories <- read_csv("C:/Users/bhumi/Desktop/Fitabase Data 4.12.16-5.12.16/dailyCalories_merged.csv")
+intensities <- read_csv("C:/Users/bhumi/Desktop/Fitabase Data 4.12.16-5.12.16/dailyIntensities_merged.csv")
+steps <- read.csv("C:/Users/bhumi/Desktop/Fitabase Data 4.12.16-5.12.16/dailySteps_merged.csv")
+sleeps <- read.csv("C:/Users/bhumi/Desktop/Fitabase Data 4.12.16-5.12.16/sleepDay_merged.csv")
+weights <- read_csv("C:/Users/bhumi/Desktop/Fitabase Data 4.12.16-5.12.16/weightLogInfo_merged.csv")
+
+```
+
+
+## 3.Process
+### Cleaning and formatting
+I used the glimpse() on each dataset to get a general understanding of the content, data, formats, and data integrity.
+
+```{r}
+#I will only be showing one of the data set.
+glimpse(activity)
+
+```
+
+After reviewing the data, I noticed that the activity data set is a merged data set of steps, intensities, and calories. So, I will be using only the activity, sleeps, and weights data sets. 
+
+Verifying number of users and cleaning duplicates
+
+```{r}
+n_distinct(activity$Id)
+n_distinct(sleeps$Id)
+n_distinct(weights$Id)
+
+```
+
+
+Off of the number of unique users, we can see the number of users that are using each of the features:
+
+* Steps Count feature: 33 (`r round((33/33)*100)`%)
+* Sleep Monitor feature: 24 (`r round((24/33)*100)`%)
+* Weight Tracking feature: 8 (`r round((8/33)*100)`%)
+
+I have decided to not use the weight tracking data for further analysis as there are not enough users for it to be reliable data.
+
+Check for duplicates
+```{r}
+sum(duplicated(activity))
+sum(duplicated(sleeps))
+
+```
+
+According to the content explanation of the data on Kaggle, the data collected was of thirty users and the above shows 33 distinct Ids. Tabulation of Id to dig deeper.
+```{r}
+tabyl(activity, Id)
+```
+
+
+
+Clean up some of the data
+
+```{r}
+#removing duplicates, columns in activity data set that I will not be using for my analysis: "LoggedActivitiesDistance" and "TrackerDistance", and removing users that has less than 20 entry dates "4057192912, 2347167796, 8253242879"
+trimmed_activity <- activity %>% 
+  subset(!(Id %in% c(4057192912, 2347167796, 8253242879)))%>% 
+  select(-LoggedActivitiesDistance, -TrackerDistance) 
+  
+sleeps_cleaned <- sleeps %>% 
+  distinct()
+  
+```
+
+
+#### Initial Findings: 
+1. FitBit's main feature, activity tracking, has a 100% usage rate.
+2. Approximately 73% of users utilize the sleep tracking feature.
+3. The majority of users fall into either the Sedentary or Very Active category based on daily steps.
+
+## 4. Analyze
+
+### Segmenting users by daily steps
+
+User daily activity level will be segmented into four groups as per the [10,000-step protocol](https://www.10000steps.org.au/articles/counting-steps/#:~:text=Low%20active%20is%205%2C000%20to,active%20is%20more%20than%2012%2C500). The daily amount of steps of each user each day will give us an idea of their activity level. The categories are as follow:
+
+* Sedentary - Less than 5000 steps per day.
+* Lightly active - Between 5000 and 7499 steps per day.
+* Fairly active - Between 7500 and 9999 steps per day.
+* Very active - More than 10000 steps per day.
+
+```{r}
+# Segmenting each user's activity level per day
+
+segmented_activity <- trimmed_activity %>% 
+  mutate(Activity_level = case_when(TotalSteps <= 5000 ~ "1.Sedentary", TotalSteps > 5000 & TotalSteps <= 7499 ~ "2.Lightly active", TotalSteps >= 7500 & TotalSteps <= 9999 ~ "3.Fairly active", TotalSteps >= 10000 ~ "4.Very active"))
+
+head(segmented_activity)
+
+```
+
+
+### Getting the percentage in each category and plotting bar graph. 
+
+```{r}
+segmented_activity %>% 
+  count(Activity_level) %>% 
+  mutate(percentage = n / nrow(segmented_activity)) -> segmented_activity2
+head(segmented_activity2)
+
+ggplot(segmented_activity2, aes(x = Activity_level, y = percentage)) +
+    geom_bar(stat = "identity")+ 
+    geom_text(aes(label = scales::percent(percentage),y= ..prop..), stat= "count",vjust = 20)+
+    labs(title="User distribution by Activity Level", x = "Activity Level", y= "Percentage of User")+
+    scale_y_continuous(labels=scales::percent)
+
+```
+
+Bar graph illustrating the percentage of users in each activity level category, ranging from Sedentary to Very Active.
+
+### Plotting a histogram to see the districution of users sleeping
+
+```{r}
+ggplot(sleeps_cleaned,aes(x=TotalMinutesAsleep)) + 
+  geom_histogram(aes(y=..density..), colour="#001F3F", fill="#2ECC71", bins = 30)+
+  geom_density(alpha=.2, fill="#BDC3C7")+
+  labs(title = "Time Spent Sleeping", x= "Hours Asleep", y= "Count")+
+  scale_x_continuous(breaks = seq(0, 800, 100))
+```
+
+Histogram depicting the distribution of users based on the total minutes spent asleep, providing insights into sleep patterns.
+
+### Plotting a histogram to see the districution of users spent time in bed
+
+```{r}
+ggplot(sleeps_cleaned, aes(x=TotalTimeInBed)) + 
+  geom_histogram(aes(y=..density..),colour="#001F3F", fill="#2ECC71", bins = 30)+
+  geom_density(alpha=.2, fill="#BDC3C7")+
+  labs(title = "Time Spent In Bed", x= "Hours In Bed", y= "Count")+
+  scale_x_continuous(breaks = seq(0, 800, 100))
+```
+
+Histogram and density plot showcasing the distribution of users according to the total time spent in bed, offering insights into users' bedtime habits.
+
+Note: The data doesn't clarify if "time spent in bed" includes sleep time. It seems they are separate, showing users spend about 7-8 hours sleeping and an additional 6-7 hours in bed. This data may not be reliable for drawing insights.
+
+## Share
+### Insights
+1. Weight tracking feature usage is low; consider making it more user-friendly.
+2. Sleep feature is popular; explore improvements in comfort and battery life.
+3. Focus marketing efforts on the steps/fitness tracker, given its high usage.
+
+### Recomendation
+
+1. Emphasize the ease of use for the weight tracking feature in marketing materials.
+2. Consider product enhancements to improve comfort and battery life for the sleep feature.
+3. Prioritize marketing campaigns highlighting the steps/fitness tracker to target potential consumers effectively.
